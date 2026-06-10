@@ -1,0 +1,20 @@
+user table 
+
+name 
+id 
+email 
+phone 
+password 
+task []
+profile_img 
+goodle_callender_connect 
+task 
+tasked 
+task tittle 
+task desc 
+task status (complete , pending )
+
+create data 
+expected_completed_date
+actual_complete_date 
+isDeleted 
