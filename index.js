@@ -3,6 +3,8 @@ const express = require("express");
 require("dotenv").config();
 const app = express();
 
+const jwt = require("jsonwebtoken");
+
 app.use(express.json());
 
 const api = require("./config/prisma");
@@ -12,8 +14,8 @@ const bcrypt = require("bcrypt");
 //home page
 
 app.get("/", async (req, res) => {
-    const user = await api.user.findMany();
-    res.send(user)
+  const user = await api.user.findMany();
+  res.send(user);
   try {
     const totalusers = await api.user.count();
     if (totalusers) {
@@ -62,6 +64,47 @@ app.post("/signup", async (req, res) => {
     return res.send(error);
   }
 });
+
+function auth(req, res, next) {
+  console.log("Hii this is middleware");
+  next();
+}
+
+app.post("/signin", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).send("Please send email and password");
+  }
+
+  const user = await api.user.findUnique({
+    where: {
+      email: email,
+    },
+  });
+
+  if (!user) {
+    return res.status(400).send("Email does not exist");
+  }
+  if (bcrypt.compareSync(password, user.password)) {
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.MYSECRET,
+      {
+        expiresIn: "48h",
+      },
+    );
+    return res.json({ token: token, message: "you are logged in" });
+  } else {
+    return res.send("Wrong pass");
+  }
+});
+
+app.get("/secretRoute", (req, res) => {
+  res.send("my secret route");
+});
+
+
+
 app.listen(process.env.PORT || 3000, () => {
   console.log(
     `Your Server is Running on PORT no http://localhost:${process.env.PORT || 3000}`,
