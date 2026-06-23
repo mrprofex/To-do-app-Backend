@@ -11,6 +11,10 @@ const api = require("./config/prisma");
 
 const bcrypt = require("bcrypt");
 
+const { OAuth2Client } = require("google-auth-library");
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 app.use(express.urlencoded({ extended: false }));
 
 //AUTH PART
@@ -32,6 +36,7 @@ function auth(req, res, next) {
   }
 }
 
+//login
 app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -49,6 +54,8 @@ app.post("/signin", async (req, res) => {
     if (!user) {
       return res.status(400).send("Email does not exist");
     }
+
+   
 
     const isMatch = bcrypt.compareSync(password, user.password);
 
@@ -76,6 +83,58 @@ app.post("/signin", async (req, res) => {
     return res.status(500).json({
       message: error.message,
     });
+  }
+});
+
+//Google login
+
+app.post("/google-login", async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({
+        message: "Invalid Google Token",
+      });
+    }
+
+    const { email, name } = payload;
+    let user = await api.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      user = await api.user.create({
+        data: {
+          name,
+          email,
+        },
+      });
+    }
+
+    const jwtToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+      },
+      process.env.MYSECRET,
+      {
+        expiresIn: "48h",
+      },
+    );
+
+    return res.json({ token: jwtToken, message: "Google login succesful" });
+  } catch (error) {
+    console.error(error);
+    return res.status(401).json({ message: "Googel login failed" });
   }
 });
 

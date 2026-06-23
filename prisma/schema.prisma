@@ -12,7 +12,7 @@ model User {
   name                    String
   email                   String   @unique
   phone                   String?  @unique
-  password                String
+  password                String?
   profileImg              String?
   googleCalendarConnected Boolean  @default(false)
   createdAt               DateTime @default(now())
