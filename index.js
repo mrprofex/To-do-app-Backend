@@ -1,21 +1,19 @@
 const express = require("express");
-
 require("dotenv").config();
+
 const app = express();
-
 const jwt = require("jsonwebtoken");
-
-app.use(express.json());
+const bcrypt = require("bcrypt");
+const cors = require("cors");
 
 const api = require("./config/prisma");
-
-const bcrypt = require("bcrypt");
-
-const { OAuth2Client } = require("google-auth-library");
-
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
+app.use(cors());
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Google Auth Setup
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 //AUTH PART
 function auth(req, res, next) {
@@ -29,6 +27,7 @@ function auth(req, res, next) {
     const decode = jwt.verify(token, process.env.MYSECRET);
 
     req.user = decode;
+    console.log(decode);
     next();
   } catch (error) {
     console.error(error);
@@ -54,8 +53,6 @@ app.post("/signin", async (req, res) => {
     if (!user) {
       return res.status(400).send("Email does not exist");
     }
-
-   
 
     const isMatch = bcrypt.compareSync(password, user.password);
 
@@ -215,7 +212,18 @@ app.post("/todo", auth, async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
+app.get("/todolist", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
 
+    const task = await api.task.findMany({ where: { userId } });
+    console.log(task);
+
+    res.status(200).json(task);
+  } catch (error) {
+    console.error(error);
+  }
+});
 app.listen(process.env.PORT || 3000, () => {
   console.log(
     `Your Server is Running on PORT no http://localhost:${process.env.PORT || 3000}`,
